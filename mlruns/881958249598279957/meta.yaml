@@ -1,0 +1,6 @@
+artifact_location: file:///C:/Studium_Data/ML_Operations/Ex1/mlruns/881958249598279957
+creation_time: 1744290566367
+experiment_id: '881958249598279957'
+last_update_time: 1744290566367
+lifecycle_stage: active
+name: LendingClubDefaultPrediction_Prefect

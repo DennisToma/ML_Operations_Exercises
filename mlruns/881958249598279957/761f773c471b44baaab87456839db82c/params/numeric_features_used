@@ -1,0 +1,1 @@
+loan_amnt, int_rate, installment, annual_inc, dti, delinq_2yrs, inq_last_6mths, open_acc, pub_rec, revol_bal, revol_util, total_acc, emp_length_numeric

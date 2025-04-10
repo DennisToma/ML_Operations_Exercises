@@ -1,0 +1,45 @@
+artifact_path: model
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.13.1
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.6.1
+is_signature_from_type_hint: false
+mlflow_version: 2.21.3
+model_size_bytes: 12404
+model_uuid: db80abb5194c4ed4ad341fb59660a1f4
+prompts: null
+run_id: 8ffd987de26a4c658697173eec16e0d9
+saved_input_example_info:
+  artifact_path: input_example.json
+  serving_input_path: serving_input_example.json
+  type: json_object
+signature:
+  inputs: '[{"type": "double", "name": "loan_amnt", "required": true}, {"type": "double",
+    "name": "int_rate", "required": true}, {"type": "double", "name": "installment",
+    "required": true}, {"type": "double", "name": "annual_inc", "required": true},
+    {"type": "double", "name": "dti", "required": true}, {"type": "double", "name":
+    "delinq_2yrs", "required": true}, {"type": "double", "name": "inq_last_6mths",
+    "required": true}, {"type": "double", "name": "open_acc", "required": true}, {"type":
+    "double", "name": "pub_rec", "required": true}, {"type": "double", "name": "revol_bal",
+    "required": true}, {"type": "double", "name": "revol_util", "required": true},
+    {"type": "double", "name": "total_acc", "required": true}, {"type": "double",
+    "name": "emp_length_numeric", "required": true}, {"type": "string", "name": "term",
+    "required": true}, {"type": "string", "name": "grade", "required": true}, {"type":
+    "string", "name": "sub_grade", "required": true}, {"type": "string", "name": "home_ownership",
+    "required": true}, {"type": "string", "name": "verification_status", "required":
+    true}, {"type": "string", "name": "purpose", "required": true}, {"type": "string",
+    "name": "addr_state", "required": true}]'
+  outputs: '[{"type": "long", "name": "prediction", "required": true}]'
+  params: null
+type_hint_from_example: false
+utc_time_created: '2025-04-10 13:30:41.560340'

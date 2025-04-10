@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Studium_Data/ML_Operations/Ex1/mlruns/881958249598279957/99b2b98da07547d4b209e28e55dc2f16/artifacts
+end_time: 1744290877885
+entry_point_name: ''
+experiment_id: '881958249598279957'
+lifecycle_stage: active
+run_id: 99b2b98da07547d4b209e28e55dc2f16
+run_name: training_prefect_88b8e0bf-614f-4780-a37e-0ed3907aff4f
+run_uuid: 99b2b98da07547d4b209e28e55dc2f16
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1744290829319
+status: 4
+tags: []
+user_id: tomad
