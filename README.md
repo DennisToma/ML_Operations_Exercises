@@ -2,6 +2,8 @@
 
 This project implements a machine learning pipeline for predicting loan defaults using the Lending Club dataset. It includes data quality checks, preprocessing, model training, and evaluation.
 
+Repository: https://github.com/DennisToma/Ex1
+
 ## Project Structure
 
 - `pipeline.py`: Main ML pipeline script with MLflow and Prefect integration
