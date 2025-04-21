@@ -1,6 +1,6 @@
 # Lending Club Default Prediction Pipeline
 
-This project implements a machine learning pipeline for predicting loan defaults using the Lending Club dataset. It includes data quality checks, preprocessing, model training, and evaluation.
+This project implements a machine learning pipeline for predicting loan defaults using the Lending Club dataset. It includes data quality checks, preprocessing, model training, evaluation, and robustness testing.
 
 Repository: https://github.com/DennisToma/Ex1
 
@@ -10,6 +10,28 @@ Repository: https://github.com/DennisToma/Ex1
 - `data_quality_tests.py`: Pre-training data quality tests
 - `Dockerfile`: Container definition for reproducible execution
 - `requirements.txt`: Python dependencies
+
+## Pipeline Overview
+
+The pipeline is orchestrated using Prefect and consists of three main steps:
+
+1. **Data Quality Check**
+   - Runs pre-training tests to validate data quality
+   - Ensures loan amounts and interest rates meet expected distributions
+   - Validates missing value thresholds
+
+2. **Model Training & Versioning**
+   - Loads and processes data in memory-efficient chunks
+   - Preprocesses numeric and categorical features
+   - Trains a logistic regression classifier to predict loan defaults
+   - Versions and registers the model with MLflow
+   - Measures model performance (achieved ~74% ROC AUC on test data)
+
+3. **Model Robustness Testing**
+   - Tests the model's stability against minor perturbations in financial indicators
+   - Adds 5% random noise to key features like income, DTI ratio, and revolving utilization
+   - Compares predictions before and after perturbation
+   - Ensures prediction changes are below a 15% threshold (typically <1% change observed)
 
 ## Data Quality Tests
 
@@ -70,6 +92,42 @@ These thresholds are based on:
 - Industry standards for data quality
 - Practical considerations for data processing
 
+## Memory Optimization Features
+
+The pipeline includes several optimizations for handling the large Lending Club dataset:
+
+1. **Chunk-based Data Loading**
+   - Processes data in manageable chunks rather than loading the entire dataset
+   - Automatically applies filters at the chunk level to reduce memory usage
+   - Supports optional sampling for faster development iterations
+
+2. **Garbage Collection**
+   - Explicitly releases memory after large processing steps
+   - Monitors memory usage throughout the pipeline execution
+
+3. **Docker Resource Allocation**
+   - Environment variables to control Python memory behavior
+   - Optional memory limits for container execution
+
+## Model Training & Evaluation
+
+The pipeline trains a logistic regression classifier to predict loan defaults:
+
+- **Target Variable**: Binary indicator (0 = Fully Paid, 1 = Charged Off)
+- **Features**: 12+ numeric and 7+ categorical features available at loan issuance
+- **Preprocessing**: Standard scaling for numeric features, one-hot encoding for categoricals
+- **Performance**: ~74% ROC AUC score achieved on test data
+- **Serialization**: MLflow-managed model storage with proper versioning
+
+## Error Handling
+
+The pipeline includes robust error handling for:
+
+1. **Insufficient Data**: Detects and fails gracefully if filtered data is too small
+2. **Memory Issues**: Optimizes memory usage and monitors available resources
+3. **Failed Runs**: Ensures MLflow runs are properly closed even on failure
+4. **Data Quality**: Stops pipeline if data quality checks fail
+
 ## Running the Project
 
 ### Using Docker (Recommended)
@@ -83,18 +141,28 @@ These thresholds are based on:
    
    On Linux/macOS:
    ```bash
-   docker run --rm -v "$(pwd)/data:/app/data" -v "$(pwd)/mlruns:/app/mlruns" lending-club-pipeline
+   docker run --rm -v "$(pwd)/data:/app/data" -v "$(pwd)/mlruns:/app/mlruns" --memory=8g lending-club-pipeline
    ```
    
    On Windows PowerShell:
    ```powershell
-   docker run --rm -v "${PWD}/data:/app/data" -v "${PWD}/mlruns:/app/mlruns" lending-club-pipeline
+   docker run --rm -v "${PWD}/data:/app/data" -v "${PWD}/mlruns:/app/mlruns" --memory=8g lending-club-pipeline
    ```
 
 3. **Run only the data quality tests**:
    ```bash
    docker run --rm -v "$(pwd)/data:/app/data" lending-club-pipeline python data_quality_tests.py
    ```
+
+### Viewing MLflow Results
+
+Start the MLflow UI to view experiment results:
+
+```bash
+mlflow ui
+```
+
+Then open your browser to http://localhost:5000
 
 ## Data Requirements
 

@@ -14,10 +14,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
  && rm -rf /var/lib/apt/lists/*
 
-# Install Rust and Cargo using rustup
+# Set environment variables
 ENV CARGO_HOME=/usr/local/cargo
+ENV GIT_PYTHON_REFRESH=quiet
 ENV RUSTUP_HOME=/usr/local/rustup
 ENV PATH=/usr/local/cargo/bin:$PATH
+# Set a reasonable default for Python memory usage
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONMALLOC=malloc
+# Disable parallel OMP operations for scikit-learn
+ENV OMP_NUM_THREADS=1
+
+# Install Rust and Cargo using rustup
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable --profile minimal
 
 # Switch back to default user (optional, depends on base image, often 'app' or non-root)
@@ -44,6 +52,9 @@ COPY data_quality_tests.py .
 # It should be mounted as a volume when running the container.
 # Similarly, the mlruns directory should be mounted to persist MLflow data.
 
-# Define the command to run your application
-# This will execute when the container starts
-CMD ["python", "pipeline.py"] 
+# Comment for memory allocation when running the container:
+# For optimal performance, run with increased memory limits:
+# docker run --memory=8g --memory-swap=10g --rm -v "$(pwd)/data:/app/data" -v "$(pwd)/mlruns:/app/mlruns" lending-club-pipeline
+
+# Define the command to run your application with memory-efficient settings
+CMD ["python", "-u", "pipeline.py"] 
