@@ -5,24 +5,24 @@ This project implements a machine learning pipeline to predict loan defaults usi
 ## Project Structure
 
 lending_club_pipeline/
-├── data/
-│ └── accepted_2007_to_2018Q4.csv # Dataset
-├── mlruns/ # MLflow tracking data (auto-created)
-├── outputs/ # Inter-container communication & reports
-│ ├── data_quality_report.json # Output from data validation
-│ └── model_meta.json # Trained model URI, run ID, features
-├── Dockerfile.data_validator # Dockerfile for data validation service
-├── Dockerfile.model_trainer # Dockerfile for model training service
-├── Dockerfile.model_validator # Dockerfile for model validation service
-├── docker-compose.yml # Docker Compose orchestration file
-├── requirements-data-validator.txt # Python dependencies for data validation
-├── requirements-model-trainer.txt # Python dependencies for model training
-├── requirements-model-validator.txt # Python dependencies for model validation
-├── data_quality_tests.py # Script with data quality check logic
-├── run_data_validation.py # Entrypoint script for data validation container
-├── run_model_training.py # Entrypoint script for model training container
-├── run_model_validation.py # Entrypoint script for model validation container
-└── README.md # This file
+├── data/  
+│ └── accepted_2007_to_2018Q4.csv # Dataset  
+├── mlruns/ # MLflow tracking data (auto-created)  
+├── outputs/ # Inter-container communication & reports  
+│ ├── data_quality_report.json # Output from data validation  
+│ └── model_meta.json # Trained model URI, run ID, features  
+├── Dockerfile.data_validator # Dockerfile for data validation service  
+├── Dockerfile.model_trainer # Dockerfile for model training service  
+├── Dockerfile.model_validator # Dockerfile for model validation service  
+├── docker-compose.yml # Docker Compose orchestration file  
+├── requirements-data-validator.txt # Python dependencies for data validation  
+├── requirements-model-trainer.txt # Python dependencies for model training  
+├── requirements-model-validator.txt # Python dependencies for model validation  
+├── data_quality_tests.py # Script with data quality check logic  
+├── run_data_validation.py # Entrypoint script for data validation container  
+├── run_model_training.py # Entrypoint script for model training container  
+├── run_model_validation.py # Entrypoint script for model validation container  
+└── README.md # This file  
 
 ## Prerequisites
 
@@ -122,8 +122,3 @@ Since MLflow is configured to use a local file system (`file:///app/mlruns` insi
 *   **Data Quality Report:** `outputs/data_quality_report.json`
 *   **Model Metadata:** `outputs/model_meta.json` (links to the trained model in MLflow)
 *   **MLflow Runs & Artifacts:** `./mlruns/` (viewable with `mlflow ui`)
-
-This should provide a good starting point for your `README.md`. You can customize it further with more specific details about your model, features, or any other project-specific information.
-
-
-
