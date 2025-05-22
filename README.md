@@ -4,7 +4,7 @@ This project implements a machine learning pipeline to predict loan defaults usi
 
 ## Project Structure
 
-lending_club_pipeline/
+lending_club_pipeline/  
 ├── data/  
 │ └── accepted_2007_to_2018Q4.csv # Dataset  
 ├── mlruns/ # MLflow tracking data (auto-created)  
