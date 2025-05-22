@@ -1,0 +1,6 @@
+artifact_location: file:///app/mlruns/133053914096878937
+creation_time: 1747923237461
+experiment_id: '133053914096878937'
+last_update_time: 1747923237461
+lifecycle_stage: active
+name: LendingClubDefaultPrediction_Dockerized

@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  data-validator:
+    build:
+      context: .
+      dockerfile: Dockerfile.data_validator
+    container_name: lending_club_data_validator
+    volumes:
+      - ./data:/app/data:ro # Mount your local data directory read-only
+      - ./outputs:/app/outputs:rw # For data quality reports
+      - ./data_quality_tests.py:/app/data_quality_tests.py:ro # Mount the script
+      - ./run_data_validation.py:/app/run_data_validation.py:ro # Mount the runner script
+      - ./requirements-data-validator.txt:/app/requirements-data-validator.txt:ro # Mount for reference, install is at build
+    environment:
+      - DATA_PATH=/app/data/accepted_2007_to_2018Q4.csv # Ensure this filename matches your data
+      - OUTPUT_DIR=/app/outputs
+    networks:
+      - lending_club_net
+    # Optional: Add resource limits if needed
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 2G
+
+  model-trainer:
+    build:
+      context: .
+      dockerfile: Dockerfile.model_trainer
+    container_name: lending_club_model_trainer
+    depends_on:
+      data-validator:
+        condition: service_completed_successfully
+    volumes:
+      - ./data:/app/data:ro
+      - ./mlruns:/app/mlruns:rw # For MLflow artifacts and tracking
+      - ./outputs:/app/outputs:rw # To save model URI and run ID
+      - ./data_quality_tests.py:/app/data_quality_tests.py:ro # For parse_emp_length
+      - ./run_model_training.py:/app/run_model_training.py:ro
+      - ./requirements-model-trainer.txt:/app/requirements-model-trainer.txt:ro
+    environment:
+      - DATA_PATH=/app/data/accepted_2007_to_2018Q4.csv
+      - MLFLOW_TRACKING_URI=file:///app/mlruns # MLflow tracking inside the container
+      - MLFLOW_EXPERIMENT_NAME=LendingClubDefaultPrediction_Dockerized
+      - OUTPUT_DIR=/app/outputs
+      - MIN_TRAINING_RECORDS=5000
+      - TEST_SET_SIZE=0.2
+      - USE_SAMPLE=True # Set to False to use full dataset (ensure enough memory)
+      - SAMPLE_SIZE=100000 # Adjust as needed if USE_SAMPLE is True
+    networks:
+      - lending_club_net
+    # Optional: Add resource limits, especially for training
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2' # Example: limit to 2 CPUs
+    #       memory: 6G # Example: limit to 6GB RAM
+
+  model-validator:
+    build:
+      context: .
+      dockerfile: Dockerfile.model_validator
+    container_name: lending_club_model_validator
+    depends_on:
+      model-trainer:
+        condition: service_completed_successfully
+    volumes:
+      - ./data:/app/data:ro
+      - ./mlruns:/app/mlruns:rw # To load model from MLflow and log more metrics
+      - ./outputs:/app/outputs:ro # To read model URI and run ID (read-only for this service)
+      - ./data_quality_tests.py:/app/data_quality_tests.py:ro # For parse_emp_length
+      - ./run_model_validation.py:/app/run_model_validation.py:ro
+      - ./requirements-model-validator.txt:/app/requirements-model-validator.txt:ro
+    environment:
+      - DATA_PATH=/app/data/accepted_2007_to_2018Q4.csv
+      - MLFLOW_TRACKING_URI=file:///app/mlruns
+      - OUTPUT_DIR=/app/outputs # To read metadata
+    networks:
+      - lending_club_net
+    # Optional: Add resource limits
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 2G
+
+# Define named volumes (optional if you prefer host mounts for all, but good for clarity)
+# These are not strictly necessary here since we are using host mounts (e.g. ./data:/app/data)
+# but if you wanted Docker to manage these volumes, you'd define them here and use them above.
+# volumes:
+#   app_data:
+#   app_mlruns:
+#   app_outputs:
+
+networks:
+  lending_club_net:
+    driver: bridge

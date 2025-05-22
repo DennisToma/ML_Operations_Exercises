@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Studium_Data/ML_Operations/Ex1/mlruns/881958249598279957/7205404b67e140588dc1642ac8a8e101/artifacts
+end_time: 1747921313933
+entry_point_name: ''
+experiment_id: '881958249598279957'
+lifecycle_stage: active
+run_id: 7205404b67e140588dc1642ac8a8e101
+run_name: training_prefect_1042391e-7991-4f4d-8905-868b21692d61
+run_uuid: 7205404b67e140588dc1642ac8a8e101
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1747921287314
+status: 3
+tags: []
+user_id: root

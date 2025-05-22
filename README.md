@@ -1,187 +1,129 @@
-# Lending Club Default Prediction Pipeline
+# Lending Club Loan Default Prediction Pipeline (Dockerized)
 
-This project implements a machine learning pipeline for predicting loan defaults using the Lending Club dataset. It includes data quality checks, preprocessing, model training, evaluation, and robustness testing.
-
-Repository: https://github.com/DennisToma/Ex1
+This project implements a machine learning pipeline to predict loan defaults using the Lending Club dataset. The pipeline is containerized using Docker and orchestrated with Docker Compose, breaking down the process into distinct services: data validation, model training, and model validation (robustness testing).
 
 ## Project Structure
 
-- `pipeline.py`: Main ML pipeline script with MLflow and Prefect integration
-- `data_quality_tests.py`: Pre-training data quality tests
-- `Dockerfile`: Container definition for reproducible execution
-- `requirements.txt`: Python dependencies
+lending_club_pipeline/
+├── data/
+│ └── accepted_2007_to_2018Q4.csv # Dataset
+├── mlruns/ # MLflow tracking data (auto-created)
+├── outputs/ # Inter-container communication & reports
+│ ├── data_quality_report.json # Output from data validation
+│ └── model_meta.json # Trained model URI, run ID, features
+├── Dockerfile.data_validator # Dockerfile for data validation service
+├── Dockerfile.model_trainer # Dockerfile for model training service
+├── Dockerfile.model_validator # Dockerfile for model validation service
+├── docker-compose.yml # Docker Compose orchestration file
+├── requirements-data-validator.txt # Python dependencies for data validation
+├── requirements-model-trainer.txt # Python dependencies for model training
+├── requirements-model-validator.txt # Python dependencies for model validation
+├── data_quality_tests.py # Script with data quality check logic
+├── run_data_validation.py # Entrypoint script for data validation container
+├── run_model_training.py # Entrypoint script for model training container
+├── run_model_validation.py # Entrypoint script for model validation container
+└── README.md # This file
 
-## Pipeline Overview
+## Prerequisites
 
-The pipeline is orchestrated using Prefect and consists of three main steps:
+*   Docker: [Install Docker](https://docs.docker.com/get-docker/)
+*   Docker Compose: Usually included with Docker Desktop. If not, [Install Docker Compose](https://docs.docker.com/compose/install/)
 
-1. **Data Quality Check**
-   - Runs pre-training tests to validate data quality
-   - Ensures loan amounts and interest rates meet expected distributions
-   - Validates missing value thresholds
+## Setup
 
-2. **Model Training & Versioning**
-   - Loads and processes data in memory-efficient chunks
-   - Preprocesses numeric and categorical features
-   - Trains a logistic regression classifier to predict loan defaults
-   - Versions and registers the model with MLflow
-   - Measures model performance (achieved ~74% ROC AUC on test data)
+1.  **Clone the repository (if applicable):**
+    ```bash
+    git clone <your-repo-url>
+    cd lending_club_pipeline
+    ```
+2.  **Place Data:**
+    Ensure your dataset (e.g., `accepted_2007_to_2018Q4.csv`) is placed inside the `data/` directory.
+3.  **Review Configuration (Optional):**
+    You can adjust environment variables within `docker-compose.yml` for each service, such as:
+    *   `DATA_PATH`: Path to the dataset.
+    *   `MLFLOW_EXPERIMENT_NAME`: Name for the MLflow experiment.
+    *   `USE_SAMPLE` & `SAMPLE_SIZE` in `model-trainer`: To use a subset of data for faster runs during development.
 
-3. **Model Robustness Testing**
-   - Tests the model's stability against minor perturbations in financial indicators
-   - Adds 5% random noise to key features like income, DTI ratio, and revolving utilization
-   - Compares predictions before and after perturbation
-   - Ensures prediction changes are below a 15% threshold (typically <1% change observed)
+## Running the Pipeline
 
-## Data Quality Tests
+1.  **Build the Docker images:**
+    ```bash
+    docker-compose build
+    ```
+2.  **Run the pipeline:**
+    ```bash
+    docker-compose up
+    ```
+    This will start the services in the defined order:
+    1.  `data-validator`
+    2.  `model-trainer` (depends on successful completion of `data-validator`)
+    3.  `model-validator` (depends on successful completion of `model-trainer`)
 
-The `data_quality_tests.py` script implements pre-training data quality checks to ensure the dataset meets expected standards before model training. These tests were designed based on empirical analysis of the Lending Club dataset.
+    To run in detached mode (in the background):
+    ```bash
+    docker-compose up -d
+    ```
 
-### Tests Implemented
+3.  **Stopping the pipeline:**
+    ```bash
+    docker-compose down
+    ```
+    To stop and remove volumes (be cautious, this deletes `mlruns` and `outputs` if they are Docker-managed volumes, but here they are host-mounted so local data persists):
+    ```bash
+    docker-compose down -v
+    ```
 
-1. **Loan Amount Distribution Test**
-   - Checks if loan amounts fall within expected ranges
-   - Minimum threshold: $1,000 (absolute minimum)
-   - Maximum threshold: $40,000 (absolute maximum)
-   - Normal range: $1,525 to $40,000 (should contain 98% of loans)
-   - Validates that missing values are below 0.01% (very strict threshold)
+## Services
 
-2. **Interest Rate Distribution Test**
-   - Checks if interest rates fall within expected ranges
-   - Minimum threshold: 5.31% (absolute minimum)
-   - Maximum threshold: 30.84% (absolute maximum)
-   - Normal range: 5.32% to 26.77% (should contain 98% of rates)
-   - Validates that the distribution shows multiple modes (at least 3 peaks)
-   - Validates that missing values are below 0.1% (strict threshold)
+### 1. Data Validator (`data-validator`)
+*   **Script:** `run_data_validation.py` (uses `data_quality_tests.py`)
+*   **Purpose:** Performs initial data quality checks on the dataset.
+*   **Output:**
+    *   A `data_quality_report.json` file in the `outputs/` directory.
+    *   The pipeline will halt if critical data quality checks fail.
 
-### Threshold Determination
+### 2. Model Trainer (`model-trainer`)
+*   **Script:** `run_model_training.py`
+*   **Purpose:**
+    *   Loads and preprocesses the data.
+    *   Trains a Logistic Regression model to predict loan default.
+    *   Logs the model, parameters, metrics (accuracy, ROC AUC), and a classification report to MLflow.
+    *   Registers the trained model in MLflow.
+*   **Output:**
+    *   MLflow artifacts (model, metrics, params) stored in the `mlruns/` directory.
+    *   A `model_meta.json` file in `outputs/` containing the MLflow run ID, model URI, and feature lists for the next step.
 
-The thresholds used in these tests were derived from empirical analysis of the dataset:
+### 3. Model Validator (`model-validator`)
+*   **Script:** `run_model_validation.py`
+*   **Purpose:**
+    *   Loads the trained model and test data.
+    *   Performs robustness tests by adding noise to key features and observing changes in predictions.
+    *   Logs robustness metrics back to the original MLflow run associated with the trained model.
+*   **Output:**
+    *   Additional metrics and parameters logged to the existing MLflow run in `mlruns/`.
 
-1. I analyzed the distribution of loan amounts and interest rates
-2. I calculated percentiles to understand the natural boundaries of the data
-3. I performed a train-test split to validate that the distributions are consistent
-4. I combined this empirical analysis with business knowledge (like Lending Club's loan limits)
+## Accessing MLflow UI
 
-#### Missing Value Thresholds
+Since MLflow is configured to use a local file system (`file:///app/mlruns` inside containers, mapped to `./mlruns` on your host), you can view the MLflow UI by running the MLflow server locally, pointing it to the `mlruns` directory:
 
-The missing value thresholds were specifically determined through detailed analysis:
+1.  Ensure you have MLflow installed in your local Python environment (outside Docker):
+    ```bash
+    pip install mlflow
+    ```
+2.  Navigate to your project's root directory (`lending_club_pipeline/`) in your terminal.
+3.  Run the MLflow UI:
+    ```bash
+    mlflow ui
+    ```
+    This will typically start the server on `http://localhost:5000`. Open this URL in your browser to see your experiments, runs, and artifacts.
 
-| Attribute | Current Missing (%) | Recommended Threshold (%) | Strictness Level |
-|-----------|---------------------|---------------------------|------------------|
-| loan_amnt | 0.00146             | 0.01                      | very strict      |
-| int_rate  | 0.00146             | 0.10                      | strict           |
+## Outputs Summary
 
-**Reasoning for threshold selection:**
+*   **Data Quality Report:** `outputs/data_quality_report.json`
+*   **Model Metadata:** `outputs/model_meta.json` (links to the trained model in MLflow)
+*   **MLflow Runs & Artifacts:** `./mlruns/` (viewable with `mlflow ui`)
 
-1. **Loan Amount:**
-   - Fundamental attribute of any loan record
-   - Critical for risk assessment and portfolio analysis
-   - Should be available for virtually all records
-   - Stricter threshold applied due to business importance
+This should provide a good starting point for your `README.md`. You can customize it further with more specific details about your model, features, or any other project-specific information.
 
-2. **Interest Rate:**
-   - Important for understanding loan pricing and risk
-   - May legitimately be missing for certain loan types or statuses
-   - Slightly more lenient threshold compared to loan amount
-   - Still requires high data quality for accurate analysis
 
-These thresholds are based on:
-- Empirical analysis of the current dataset
-- Business importance of each attribute
-- Industry standards for data quality
-- Practical considerations for data processing
 
-## Memory Optimization Features
-
-The pipeline includes several optimizations for handling the large Lending Club dataset:
-
-1. **Chunk-based Data Loading**
-   - Processes data in manageable chunks rather than loading the entire dataset
-   - Automatically applies filters at the chunk level to reduce memory usage
-   - Supports optional sampling for faster development iterations
-
-2. **Garbage Collection**
-   - Explicitly releases memory after large processing steps
-   - Monitors memory usage throughout the pipeline execution
-
-3. **Docker Resource Allocation**
-   - Environment variables to control Python memory behavior
-   - Optional memory limits for container execution
-
-## Model Training & Evaluation
-
-The pipeline trains a logistic regression classifier to predict loan defaults:
-
-- **Target Variable**: Binary indicator (0 = Fully Paid, 1 = Charged Off)
-- **Features**: 12+ numeric and 7+ categorical features available at loan issuance
-- **Preprocessing**: Standard scaling for numeric features, one-hot encoding for categoricals
-- **Performance**: ~74% ROC AUC score achieved on test data
-- **Serialization**: MLflow-managed model storage with proper versioning
-
-## Error Handling
-
-The pipeline includes robust error handling for:
-
-1. **Insufficient Data**: Detects and fails gracefully if filtered data is too small
-2. **Memory Issues**: Optimizes memory usage and monitors available resources
-3. **Failed Runs**: Ensures MLflow runs are properly closed even on failure
-4. **Data Quality**: Stops pipeline if data quality checks fail
-
-## Running the Project
-
-### Using Docker (Recommended)
-
-1. **Build the Docker image**:
-   ```bash
-   docker build -t lending-club-pipeline .
-   ```
-
-2. **Run the container**:
-   
-   On Linux/macOS:
-   ```bash
-   docker run --rm -v "$(pwd)/data:/app/data" -v "$(pwd)/mlruns:/app/mlruns" --memory=8g lending-club-pipeline
-   ```
-   
-   On Windows PowerShell:
-   ```powershell
-   docker run --rm -v "${PWD}/data:/app/data" -v "${PWD}/mlruns:/app/mlruns" --memory=8g lending-club-pipeline
-   ```
-
-3. **Run only the data quality tests**:
-   ```bash
-   docker run --rm -v "$(pwd)/data:/app/data" lending-club-pipeline python data_quality_tests.py
-   ```
-
-### Viewing MLflow Results
-
-Start the MLflow UI to view experiment results:
-
-```bash
-mlflow ui
-```
-
-Then open your browser to http://localhost:5000
-
-## Data Requirements
-
-The pipeline expects the Lending Club dataset in CSV format:
-- Main file: `data/accepted_2007_to_2018Q4.csv`
-
-## Output
-
-- Data quality test results are logged to the console
-- Detailed test results are saved to `data_quality_test_results.json`
-- MLflow tracking information is stored in the `mlruns` directory
-- Model artifacts are saved in the MLflow registry
-
-## Dependencies
-
-Key dependencies include:
-- pandas, numpy, scikit-learn: Data processing and modeling
-- mlflow: Model tracking and registry
-- prefect: Workflow orchestration
-- great-expectations: Data quality testing
-
-See `requirements.txt` for the complete list of dependencies.

@@ -1,0 +1,38 @@
+# Dockerfile.model_trainer
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies needed for Rust and some Python packages
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+# Set environment variables for Rust
+ENV CARGO_HOME=/usr/local/cargo
+ENV RUSTUP_HOME=/usr/local/rustup
+ENV PATH=/usr/local/cargo/bin:$PATH
+
+# Install Rust and Cargo
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable --profile minimal
+
+# Copy the specific requirements file for this service
+COPY requirements-model-trainer.txt .
+RUN pip install --no-cache-dir -r requirements-model-trainer.txt
+
+# Scripts (data_quality_tests.py for parse_emp_length, and run_model_training.py)
+# will be mounted via docker-compose.
+# For standalone image:
+# COPY data_quality_tests.py .
+# COPY run_model_training.py .
+
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONMALLOC=malloc
+ENV OMP_NUM_THREADS=1
+
+# Command to run the model training script
+CMD ["python", "/app/run_model_training.py"]

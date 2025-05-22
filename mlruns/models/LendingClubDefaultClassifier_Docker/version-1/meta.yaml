@@ -1,0 +1,14 @@
+aliases: []
+creation_timestamp: 1747923353476
+current_stage: None
+description: null
+last_updated_timestamp: 1747923353476
+name: LendingClubDefaultClassifier_Docker
+run_id: 5d573e8c6bba4acf9d11fc7e62dac7f6
+run_link: null
+source: file:///app/mlruns/133053914096878937/5d573e8c6bba4acf9d11fc7e62dac7f6/artifacts/model
+status: READY
+status_message: null
+storage_location: file:///app/mlruns/133053914096878937/5d573e8c6bba4acf9d11fc7e62dac7f6/artifacts/model
+user_id: null
+version: 1

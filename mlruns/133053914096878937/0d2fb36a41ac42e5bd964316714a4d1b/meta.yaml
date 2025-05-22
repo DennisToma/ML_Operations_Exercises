@@ -1,0 +1,15 @@
+artifact_uri: file:///app/mlruns/133053914096878937/0d2fb36a41ac42e5bd964316714a4d1b/artifacts
+end_time: 1747923248178
+entry_point_name: ''
+experiment_id: '133053914096878937'
+lifecycle_stage: active
+run_id: 0d2fb36a41ac42e5bd964316714a4d1b
+run_name: dockerized_training_run
+run_uuid: 0d2fb36a41ac42e5bd964316714a4d1b
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1747923237559
+status: 4
+tags: []
+user_id: root

@@ -1,0 +1,14 @@
+aliases: []
+creation_timestamp: 1747921303543
+current_stage: None
+description: null
+last_updated_timestamp: 1747921303543
+name: LendingClubDefaultClassifier
+run_id: 7205404b67e140588dc1642ac8a8e101
+run_link: null
+source: file:///C:/Studium_Data/ML_Operations/Ex1/mlruns/881958249598279957/7205404b67e140588dc1642ac8a8e101/artifacts/model
+status: READY
+status_message: null
+storage_location: file:///C:/Studium_Data/ML_Operations/Ex1/mlruns/881958249598279957/7205404b67e140588dc1642ac8a8e101/artifacts/model
+user_id: null
+version: 2

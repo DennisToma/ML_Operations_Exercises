@@ -1,0 +1,25 @@
+# Dockerfile.data_validator
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies (if any specific to data validation, otherwise minimal)
+# curl might be useful for fetching things in the future, but not strictly needed now.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+ && rm -rf /var/lib/apt/lists/*
+
+# Copy the specific requirements file for this service
+COPY requirements-data-validator.txt .
+RUN pip install --no-cache-dir -r requirements-data-validator.txt
+
+# The main scripts (data_quality_tests.py and run_data_validation.py)
+# will be mounted via docker-compose for easier development.
+# If building a standalone image, you would uncomment these:
+# COPY data_quality_tests.py .
+# COPY run_data_validation.py .
+
+ENV PYTHONUNBUFFERED=1
+
+# Command to run the data validation script
+CMD ["python", "/app/run_data_validation.py"]

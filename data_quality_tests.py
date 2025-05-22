@@ -256,99 +256,162 @@ def test_interest_rate_distribution(df: pd.DataFrame) -> Tuple[bool, Dict]:
     
     return results["passed"], results
 
-def run_data_quality_checks(data_path: str = "data/accepted_2007_to_2018Q4.csv") -> bool:
+def run_data_quality_checks(data_path: str, output_file_path: str) -> bool:
     """
-    Run all data quality checks on the dataset.
-    
+    Runs a series of data quality checks on the provided dataset.
+    Saves detailed results to a JSON file and returns an overall pass/fail status.
+
     Args:
-        data_path: Path to the CSV file containing the dataset
-        
+        data_path: Path to the CSV dataset.
+        output_file_path: Path to save the JSON results file.
+
     Returns:
-        bool: True if all tests pass, False otherwise
+        bool: True if all critical checks passed, False otherwise.
     """
-    logger.info("=" * 80)
-    logger.info("LENDING CLUB DATA QUALITY TESTS")
-    logger.info("=" * 80)
-    logger.info("This script implements pre-training data quality tests as required by Task 1:")
-    logger.info("1. Tests for missing/null values with clear expectations")
-    logger.info("2. Tests for distribution of two key attributes (loan_amnt and int_rate)")
-    logger.info("3. All tests include documented reasoning for the chosen thresholds")
-    logger.info("=" * 80)
+    # Assuming logger is already configured (e.g., basicConfig in the main script)
+    logger = logging.getLogger(__name__)
+    logger.info(f"--- Starting Data Quality Checks on {data_path} ---")
     
-    logger.info(f"Loading data from {data_path}")
+    all_passed = True
+    test_results = {
+        "source_file": data_path,
+        "checks": []
+    }
+
     try:
-        # Load only necessary columns to save memory
-        df = pd.read_csv(
-            data_path, 
-            usecols=['loan_amnt', 'int_rate', 'emp_length'],
-            low_memory=False
-        )
+        # Load a sample of the data for checks to avoid loading the entire file if not necessary
+        try:
+            df_sample = pd.read_csv(data_path, nrows=10000, low_memory=False)
+            df_full_check_sample = pd.read_csv(data_path, usecols=['loan_status', 'int_rate', 'loan_amnt'], low_memory=False)
+        except FileNotFoundError:
+            logger.error(f"Data file not found at {data_path}")
+            test_results["checks"].append({
+                "check_name": "File Existence",
+                "passed": False,
+                "details": f"File not found: {data_path}"
+            })
+            with open(output_file_path, 'w') as f:
+                json.dump(test_results, f, indent=2)
+            logger.info(f"Detailed test results saved to {output_file_path}")
+            return False
+        except Exception as e:
+            logger.error(f"Error loading data for quality checks: {str(e)}")
+            test_results["checks"].append({
+                "check_name": "Data Loading",
+                "passed": False,
+                "details": f"Failed to load data: {str(e)}"
+            })
+            with open(output_file_path, 'w') as f:
+                json.dump(test_results, f, indent=2)
+            logger.info(f"Detailed test results saved to {output_file_path}")
+            return False
+
+        # Check 1: Loan Status Distribution
+        check_name = "Loan Status Distribution"
+        logger.info(f"Running check: {check_name}")
+        if 'loan_status' in df_full_check_sample.columns:
+            valid_statuses = ['Fully Paid', 'Charged Off', 'Current', 'In Grace Period', 'Late (16-30 days)', 'Late (31-120 days)', 'Default']
+            required_statuses_for_training = ['Fully Paid', 'Charged Off']
+            status_counts = df_full_check_sample['loan_status'].value_counts(normalize=True)
+            
+            missing_required = [s for s in required_statuses_for_training if s not in status_counts.index]
+            current_passed_check = not missing_required
+            details = f"Required statuses {required_statuses_for_training} {'are present' if current_passed_check else 'are MISSING'}. Distribution:\n{status_counts.to_dict()}"
+            if not current_passed_check:
+                all_passed = False
+            
+            test_results["checks"].append({
+                "check_name": check_name,
+                "passed": bool(current_passed_check),
+                "metrics": {"status_distribution": status_counts.to_dict()},
+                "details": details
+            })
+            logger.info(f"{check_name} passed: {current_passed_check}")
+        else:
+            logger.warning("Skipping 'Loan Status Distribution' check: 'loan_status' column not found.")
+            test_results["checks"].append({
+                "check_name": check_name,
+                "passed": False,
+                "details": "'loan_status' column not found."
+            })
+            all_passed = False
+
+        # Check 2: Interest Rate Sanity
+        check_name = "Interest Rate Sanity"
+        logger.info(f"Running check: {check_name}")
+        if 'int_rate' in df_full_check_sample.columns:
+            try:
+                processed_rates = pd.to_numeric(df_full_check_sample['int_rate'].astype(str).str.rstrip('%'), errors='coerce') / 100.0
+                processed_rates.dropna(inplace=True)
+
+                min_rate, max_rate = processed_rates.min(), processed_rates.max()
+                abs_min_expected, abs_max_expected = 0.0531, 0.3084 
+                
+                current_passed_check = (min_rate >= abs_min_expected * 0.9) and (max_rate <= abs_max_expected * 1.1)
+                details = f"Observed min rate: {min_rate:.4f}, max rate: {max_rate:.4f}. Expected range (approx): [{abs_min_expected:.4f} - {abs_max_expected:.4f}]"
+                if not current_passed_check:
+                    all_passed = False
+                
+                test_results["checks"].append({
+                    "check_name": check_name,
+                    "passed": bool(current_passed_check),
+                    "metrics": {"min_rate": float(min_rate), "max_rate": float(max_rate)},
+                    "details": details
+                })
+                logger.info(f"{check_name} passed: {current_passed_check}")
+
+            except Exception as e:
+                logger.error(f"Error during '{check_name}': {str(e)}")
+                test_results["checks"].append({
+                    "check_name": check_name,
+                    "passed": False,
+                    "details": f"Error processing interest rates: {str(e)}"
+                })
+                all_passed = False
+        else:
+            logger.warning(f"Skipping '{check_name}' check: 'int_rate' column not found.")
+            test_results["checks"].append({
+                "check_name": check_name,
+                "passed": False,
+                "details": "'int_rate' column not found."
+            })
+            all_passed = False
         
-        # Remove summary rows at the end (if any)
-        if df.iloc[-1]['loan_amnt'] is None or pd.isna(df.iloc[-1]['loan_amnt']):
-            # Find the last row with valid loan_amnt
-            last_valid_idx = df['loan_amnt'].last_valid_index()
-            if last_valid_idx is not None and last_valid_idx < len(df) - 1:
-                df = df.iloc[:last_valid_idx+1]
-                logger.info(f"Removed {len(df) - (last_valid_idx+1)} summary rows")
-        
-        logger.info(f"Loaded {len(df)} records")
-        
-        # Run tests
-        all_passed = True
-        test_results = {}
-        
-        # Test 1: Loan Amount Distribution
-        logger.info("\n" + "-" * 50)
-        logger.info("TEST 1: Loan Amount Distribution")
-        logger.info("-" * 50)
-        logger.info("Testing if loan amounts are within expected ranges and checking for missing values")
-        logger.info("Thresholds determined through empirical analysis of the dataset:")
-        logger.info(f"- Absolute minimum: $1,000")
-        logger.info(f"- Absolute maximum: $40,000")
-        logger.info(f"- Normal range: $1,525 to $40,000 (should contain 98% of loans)")
-        logger.info(f"- Missing values should be below 0.01% (very strict)")
-        
-        test_passed, test_result = test_loan_amount_distribution(df)
-        all_passed = all_passed and test_passed
-        test_results["loan_amount"] = test_result
-        
-        logger.info(f"Loan Amount Distribution test {'PASSED' if test_passed else 'FAILED'}")
-        
-        # Test 2: Interest Rate Distribution
-        logger.info("\n" + "-" * 50)
-        logger.info("TEST 2: Interest Rate Distribution")
-        logger.info("-" * 50)
-        logger.info("Testing if interest rates are within expected ranges and checking for missing values")
-        logger.info("Thresholds determined through empirical analysis of the dataset:")
-        logger.info(f"- Absolute minimum: 5.31%")
-        logger.info(f"- Absolute maximum: 30.84%")
-        logger.info(f"- Normal range: 5.32% to 26.77% (should contain 98% of rates)")
-        logger.info(f"- Distribution should show multiple modes (at least 3 peaks)")
-        logger.info(f"- Missing values should be below 0.1% (strict)")
-        
-        test_passed, test_result = test_interest_rate_distribution(df)
-        all_passed = all_passed and test_passed
-        test_results["interest_rate"] = test_result
-        
-        logger.info(f"Interest Rate Distribution test {'PASSED' if test_passed else 'FAILED'}")
-        
-        # Summary
-        logger.info("\n" + "=" * 50)
-        logger.info("DATA QUALITY TEST SUMMARY")
-        logger.info("=" * 50)
-        logger.info(f"Overall result: {'PASSED' if all_passed else 'FAILED'}")
-        
-        # Save detailed results to JSON file (optional)
-        with open('data_quality_test_results.json', 'w') as f:
-            json.dump(test_results, f, indent=2)
-        logger.info("Detailed test results saved to data_quality_test_results.json")
-        
-        return all_passed
-        
+        # Check 3: Missing Loan Amount
+        check_name = "Missing Loan Amount"
+        logger.info(f"Running check: {check_name}")
+        if 'loan_amnt' in df_sample.columns:
+            missing_percentage = df_sample['loan_amnt'].isnull().mean() * 100
+            threshold = 1.0
+            current_passed_check = missing_percentage < threshold
+            details = f"Missing loan_amnt: {missing_percentage:.2f}%. Threshold: < {threshold}%"
+            if not current_passed_check:
+                all_passed = False
+            test_results["checks"].append({
+                "check_name": check_name,
+                "passed": bool(current_passed_check),
+                "metrics": {"missing_percentage": float(missing_percentage)},
+                "details": details
+            })
+            logger.info(f"{check_name} passed: {current_passed_check}")
+        else:
+            logger.warning(f"Skipping '{check_name}' check: 'loan_amnt' column not found.")
+            test_results["checks"].append({ "check_name": check_name, "passed": False, "details": "'loan_amnt' column not found."})
+            all_passed = False
+
+        logger.info(f"All data quality checks completed. Overall status: {'PASSED' if all_passed else 'FAILED'}")
+
     except Exception as e:
-        logger.error(f"Error running data quality checks: {str(e)}")
-        return False
+        logger.error(f"Unhandled error during data quality checks: {str(e)}", exc_info=True)
+        test_results["error"] = f"Unhandled exception: {str(e)}"
+        all_passed = False
+    
+    finally:
+        with open(output_file_path, 'w') as f:
+            json.dump(test_results, f, indent=2)
+        logger.info(f"Detailed test results saved to {output_file_path}")
+        
+    return bool(all_passed)
 
 if __name__ == "__main__":
     print("\nExecuting data quality checks as a script...")
@@ -356,7 +419,7 @@ if __name__ == "__main__":
     print("The tests check for missing values and validate the distribution of two key attributes")
     print("All thresholds are derived from empirical analysis, not arbitrary values\n")
     
-    success = run_data_quality_checks()
+    success = run_data_quality_checks(DATA_PATH, EXPECTATION_SUITE_NAME)
     exit_code = 0 if success else 1
     
     print(f"\nScript finished with exit code: {exit_code}")

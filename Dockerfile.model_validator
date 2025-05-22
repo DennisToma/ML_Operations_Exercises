@@ -1,0 +1,24 @@
+# Dockerfile.model_validator
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies (if any specific to model validation)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+ && rm -rf /var/lib/apt/lists/*
+
+# Copy the specific requirements file for this service
+COPY requirements-model-validator.txt .
+RUN pip install --no-cache-dir -r requirements-model-validator.txt
+
+# Scripts (data_quality_tests.py for parse_emp_length, and run_model_validation.py)
+# will be mounted via docker-compose.
+# For standalone image:
+# COPY data_quality_tests.py .
+# COPY run_model_validation.py .
+
+ENV PYTHONUNBUFFERED=1
+
+# Command to run the model validation script
+CMD ["python", "/app/run_model_validation.py"]

@@ -1,0 +1,40 @@
+{
+  "source_file": "/app/data/accepted_2007_to_2018Q4.csv",
+  "checks": [
+    {
+      "check_name": "Loan Status Distribution",
+      "passed": true,
+      "metrics": {
+        "status_distribution": {
+          "Fully Paid": 0.47629771377309715,
+          "Current": 0.3885210035263913,
+          "Charged Off": 0.11879630268575483,
+          "Late (31-120 days)": 0.009495865823729977,
+          "In Grace Period": 0.0037316403824002465,
+          "Late (16-30 days)": 0.0019237676651326068,
+          "Does not meet the credit policy. Status:Fully Paid": 0.000879386092960134,
+          "Does not meet the credit policy. Status:Charged Off": 0.000336626165363512,
+          "Default": 1.7693885170224023e-05
+        }
+      },
+      "details": "Required statuses ['Fully Paid', 'Charged Off'] are present. Distribution:\n{'Fully Paid': 0.47629771377309715, 'Current': 0.3885210035263913, 'Charged Off': 0.11879630268575483, 'Late (31-120 days)': 0.009495865823729977, 'In Grace Period': 0.0037316403824002465, 'Late (16-30 days)': 0.0019237676651326068, 'Does not meet the credit policy. Status:Fully Paid': 0.000879386092960134, 'Does not meet the credit policy. Status:Charged Off': 0.000336626165363512, 'Default': 1.7693885170224023e-05}"
+    },
+    {
+      "check_name": "Interest Rate Sanity",
+      "passed": true,
+      "metrics": {
+        "min_rate": 0.053099999999999994,
+        "max_rate": 0.3099
+      },
+      "details": "Observed min rate: 0.0531, max rate: 0.3099. Expected range (approx): [0.0531 - 0.3084]"
+    },
+    {
+      "check_name": "Missing Loan Amount",
+      "passed": true,
+      "metrics": {
+        "missing_percentage": 0.0
+      },
+      "details": "Missing loan_amnt: 0.00%. Threshold: < 1.0%"
+    }
+  ]
+}

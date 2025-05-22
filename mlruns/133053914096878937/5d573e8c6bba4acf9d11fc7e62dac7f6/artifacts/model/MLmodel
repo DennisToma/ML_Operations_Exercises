@@ -1,0 +1,46 @@
+artifact_path: model
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.11.12
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.6.1
+is_signature_from_type_hint: false
+mlflow_version: 2.21.3
+model_size_bytes: 9206
+model_uuid: 78c3d2e07fb64cd199169ff5aa608d96
+prompts: null
+run_id: 5d573e8c6bba4acf9d11fc7e62dac7f6
+saved_input_example_info:
+  artifact_path: input_example.json
+  pandas_orient: split
+  serving_input_path: serving_input_example.json
+  type: dataframe
+signature:
+  inputs: '[{"type": "double", "name": "loan_amnt", "required": true}, {"type": "double",
+    "name": "int_rate", "required": true}, {"type": "double", "name": "installment",
+    "required": true}, {"type": "double", "name": "annual_inc", "required": true},
+    {"type": "double", "name": "dti", "required": true}, {"type": "double", "name":
+    "delinq_2yrs", "required": true}, {"type": "double", "name": "inq_last_6mths",
+    "required": true}, {"type": "double", "name": "open_acc", "required": true}, {"type":
+    "double", "name": "pub_rec", "required": true}, {"type": "double", "name": "revol_bal",
+    "required": true}, {"type": "double", "name": "revol_util", "required": true},
+    {"type": "double", "name": "total_acc", "required": true}, {"type": "double",
+    "name": "emp_length_numeric", "required": true}, {"type": "string", "name": "term",
+    "required": true}, {"type": "string", "name": "grade", "required": true}, {"type":
+    "string", "name": "sub_grade", "required": true}, {"type": "string", "name": "home_ownership",
+    "required": true}, {"type": "string", "name": "verification_status", "required":
+    true}, {"type": "string", "name": "purpose", "required": true}, {"type": "string",
+    "name": "addr_state", "required": true}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "int64", "shape": [-1]}}]'
+  params: null
+type_hint_from_example: false
+utc_time_created: '2025-05-22 14:15:51.783870'
