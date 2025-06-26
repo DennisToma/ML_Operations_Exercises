@@ -1,0 +1,28 @@
+services:
+  ab-tester:
+    build:
+      context: .
+      dockerfile: Dockerfile.ab_tester
+    container_name: lending_club_ab_tester
+    volumes:
+      - ./data:/app/data:ro
+      - ./mlruns:/app/mlruns:ro
+      - ./outputs:/app/outputs:rw
+    environment:
+      - DATA_PATH=/app/data/accepted_2007_to_2018Q4.csv
+      - MLFLOW_TRACKING_URI=file:///app/mlruns
+      - OUTPUT_DIR=/app/outputs
+      # --- A/B Test Configuration ---
+      - AB_TEST_ID=v1_vs_v2_comparison
+      # Use the logical model version names defined in the other compose files.
+      # The `model_meta.json` file must contain these keys.
+      - MODEL_VERSION_NAMES=Model_V1_Default,Model_V2_Strong_Reg
+    networks:
+      - lending_club_net
+
+volumes:
+  mlruns:
+
+networks:
+  lending_club_net:
+    driver: bridge 

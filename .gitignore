@@ -1,3 +1,16 @@
-.venv
-__pycache__
+# Python Virtual Environment
+.venv/
+__pycache__/
+*.pyc
+
+# MLflow Tracking Data
+mlruns/
+
+# Dataset Files (add data files here, but keep the directory)
+# This ignores all files in /data, but not the directory itself
+# if a .gitkeep file is present.
 data/*
+!data/.gitkeep
+
+# Submission archives
+*.zip

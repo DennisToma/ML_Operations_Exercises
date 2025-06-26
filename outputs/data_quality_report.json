@@ -6,18 +6,18 @@
       "passed": true,
       "metrics": {
         "status_distribution": {
-          "Fully Paid": 0.47629771377309715,
-          "Current": 0.3885210035263913,
           "Charged Off": 0.11879630268575483,
-          "Late (31-120 days)": 0.009495865823729977,
+          "Current": 0.3885210035263913,
+          "Default": 1.7693885170224023e-05,
+          "Does not meet the credit policy. Status:Charged Off": 0.000336626165363512,
+          "Does not meet the credit policy. Status:Fully Paid": 0.000879386092960134,
+          "Fully Paid": 0.47629771377309715,
           "In Grace Period": 0.0037316403824002465,
           "Late (16-30 days)": 0.0019237676651326068,
-          "Does not meet the credit policy. Status:Fully Paid": 0.000879386092960134,
-          "Does not meet the credit policy. Status:Charged Off": 0.000336626165363512,
-          "Default": 1.7693885170224023e-05
+          "Late (31-120 days)": 0.009495865823729977
         }
       },
-      "details": "Required statuses ['Fully Paid', 'Charged Off'] are present. Distribution:\n{'Fully Paid': 0.47629771377309715, 'Current': 0.3885210035263913, 'Charged Off': 0.11879630268575483, 'Late (31-120 days)': 0.009495865823729977, 'In Grace Period': 0.0037316403824002465, 'Late (16-30 days)': 0.0019237676651326068, 'Does not meet the credit policy. Status:Fully Paid': 0.000879386092960134, 'Does not meet the credit policy. Status:Charged Off': 0.000336626165363512, 'Default': 1.7693885170224023e-05}"
+      "details": "Required statuses ['Fully Paid', 'Charged Off'] are present. Distribution:\n{'Charged Off': 0.11879630268575483, 'Current': 0.3885210035263913, 'Default': 1.7693885170224023e-05, 'Does not meet the credit policy. Status:Charged Off': 0.000336626165363512, 'Does not meet the credit policy. Status:Fully Paid': 0.000879386092960134, 'Fully Paid': 0.47629771377309715, 'In Grace Period': 0.0037316403824002465, 'Late (16-30 days)': 0.0019237676651326068, 'Late (31-120 days)': 0.009495865823729977}"
     },
     {
       "check_name": "Interest Rate Sanity",

@@ -1,0 +1,47 @@
+{
+  "data_path": "/app/data/accepted_2007_to_2018Q4.csv",
+  "test_fraction": 0.1,
+  "features": {
+    "loan_amnt": {
+      "ks_statistic": 0.07248990461127863,
+      "p_value": 4.767747510233309e-173,
+      "drift_detected": true
+    },
+    "int_rate": {
+      "ks_statistic": 0.16376857954826274,
+      "p_value": 0.0,
+      "drift_detected": true
+    },
+    "installment": {
+      "ks_statistic": 0.04640825647868996,
+      "p_value": 3.926036568760343e-71,
+      "drift_detected": true
+    },
+    "annual_inc": {
+      "ks_statistic": 0.017480493418343013,
+      "p_value": 1.8628524086694412e-10,
+      "drift_detected": true
+    },
+    "dti": {
+      "ks_statistic": 0.0368204556009647,
+      "p_value": 6.392702953329954e-45,
+      "drift_detected": true
+    },
+    "revol_bal": {
+      "ks_statistic": 0.04067422115685593,
+      "p_value": 9.811302107596584e-55,
+      "drift_detected": true
+    },
+    "revol_util": {
+      "ks_statistic": 0.03935299620709931,
+      "p_value": 3.161178254041977e-51,
+      "drift_detected": true
+    },
+    "total_acc": {
+      "ks_statistic": 0.043041187828465055,
+      "p_value": 3.0547807210941962e-61,
+      "drift_detected": true
+    }
+  },
+  "overall_drift_status": "DRIFT_DETECTED"
+}

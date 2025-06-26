@@ -30,15 +30,17 @@ logger = logging.getLogger(__name__)
 def test_model_robustness(
     data_path_for_test: str,
     mlflow_tracking_uri: str,
-    output_dir_meta: str # Directory to read model_meta.json from
+    output_dir_meta: str, # Directory to read model_meta.json from
+    model_version_name: str # The key for the model in the JSON file
 ):
     logger.info("--- Starting Model Validation (Robustness Test) Script ---")
+    logger.info(f"Validating model version: {model_version_name}")
     logger.info(f"Available memory before test: {psutil.virtual_memory().available / (1024**3):.2f} GB")
 
     meta_file_path = os.path.join(output_dir_meta, "model_meta.json")
     try:
         with open(meta_file_path, 'r') as f:
-            model_meta = json.load(f)
+            all_model_meta = json.load(f)
     except FileNotFoundError:
         logger.error(f"Model metadata file not found: {meta_file_path}")
         return False # Critical failure
@@ -46,8 +48,14 @@ def test_model_robustness(
         logger.error(f"Error decoding JSON from model metadata file: {meta_file_path}")
         return False # Critical failure
     
+    # Select the metadata for the specific model version
+    model_meta = all_model_meta.get(model_version_name)
+    if not model_meta:
+        logger.error(f"Metadata for model version '{model_version_name}' not found in {meta_file_path}")
+        return False
+
     if model_meta.get("status") == "TRAINING_FAILED" or not model_meta.get("model_uri"):
-        logger.error(f"Model training failed or model_uri not found in metadata. Skipping validation. Metadata: {model_meta}")
+        logger.error(f"Model training failed or model_uri not found in metadata for {model_version_name}. Skipping validation. Metadata: {model_meta}")
         # Depending on desired behavior, this could be a sys.exit(0) if skipping is acceptable,
         # or sys.exit(1) if a valid model is strictly required for this stage to "pass".
         # For now, let's consider it a script success (it ran) but validation was skipped.
@@ -207,11 +215,22 @@ def main():
     mlflow_tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "file:///app/mlruns")
     output_dir_meta = os.getenv("OUTPUT_DIR", "/app/outputs") # To read model_meta.json
 
-    if not data_path:
-        logger.error("DATA_PATH environment variable not set.")
+    # Get the model version name to validate
+    model_version_name = os.getenv("MODEL_VERSION_NAME")
+    if not model_version_name:
+        logger.error("Required environment variable MODEL_VERSION_NAME not set.")
         sys.exit(1)
-    
-    success = test_model_robustness(data_path, mlflow_tracking_uri, output_dir_meta)
+
+    if not data_path:
+        logger.error("Required environment variable DATA_PATH not set.")
+        sys.exit(1)
+
+    meta_file_path = os.path.join(output_dir_meta, "model_meta.json")
+    if not os.path.exists(meta_file_path):
+        logger.error(f"Input metadata file not found at: {meta_file_path}")
+        sys.exit(1)
+
+    success = test_model_robustness(data_path, mlflow_tracking_uri, output_dir_meta, model_version_name)
 
     if success:
         logger.info("Model validation (robustness) script finished.")

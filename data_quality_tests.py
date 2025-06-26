@@ -279,10 +279,10 @@ def run_data_quality_checks(data_path: str, output_file_path: str) -> bool:
     }
 
     try:
-        # Load a sample of the data for checks to avoid loading the entire file if not necessary
+        # Load a sample of the data for some checks to avoid loading the entire file if not necessary
         try:
+            # Use a smaller sample just for the missing value check on a segment.
             df_sample = pd.read_csv(data_path, nrows=10000, low_memory=False)
-            df_full_check_sample = pd.read_csv(data_path, usecols=['loan_status', 'int_rate', 'loan_amnt'], low_memory=False)
         except FileNotFoundError:
             logger.error(f"Data file not found at {data_path}")
             test_results["checks"].append({
@@ -295,56 +295,92 @@ def run_data_quality_checks(data_path: str, output_file_path: str) -> bool:
             logger.info(f"Detailed test results saved to {output_file_path}")
             return False
         except Exception as e:
-            logger.error(f"Error loading data for quality checks: {str(e)}")
+            logger.error(f"Error loading initial data sample: {str(e)}")
             test_results["checks"].append({
                 "check_name": "Data Loading",
                 "passed": False,
-                "details": f"Failed to load data: {str(e)}"
+                "details": f"Failed to load initial data sample: {str(e)}"
             })
             with open(output_file_path, 'w') as f:
                 json.dump(test_results, f, indent=2)
             logger.info(f"Detailed test results saved to {output_file_path}")
             return False
 
+        # --- Memory-Efficient Full Scan for Distribution Checks ---
+        logger.info("Starting memory-efficient scan for distribution checks...")
+        chunk_size = 50000
+        status_counts = pd.Series(dtype='int64')
+        min_rate_overall, max_rate_overall = float('inf'), float('-inf')
+        
+        try:
+            iterator = pd.read_csv(
+                data_path, 
+                usecols=['loan_status', 'int_rate'], 
+                chunksize=chunk_size, 
+                low_memory=False
+            )
+            for chunk in iterator:
+                # Loan Status
+                status_counts = status_counts.add(chunk['loan_status'].value_counts(), fill_value=0)
+                
+                # Interest Rate
+                processed_rates = pd.to_numeric(chunk['int_rate'].astype(str).str.rstrip('%'), errors='coerce') / 100.0
+                processed_rates.dropna(inplace=True)
+                if not processed_rates.empty:
+                    min_rate_overall = min(min_rate_overall, processed_rates.min())
+                    max_rate_overall = max(max_rate_overall, processed_rates.max())
+            
+            logger.info("Memory-efficient scan completed.")
+
+        except Exception as e:
+            logger.error(f"Error during chunked data processing: {str(e)}")
+            # Log this as a failed check and prevent subsequent checks from running if they depend on it
+            test_results["checks"].append({
+                "check_name": "Chunked Data Processing", "passed": False,
+                "details": f"Failed to process data in chunks: {str(e)}"
+            })
+            all_passed = False
+            # To prevent further errors, we'll set placeholder values
+            status_counts = pd.Series(dtype='int64') 
+            min_rate_overall = -1
+
+
         # Check 1: Loan Status Distribution
         check_name = "Loan Status Distribution"
         logger.info(f"Running check: {check_name}")
-        if 'loan_status' in df_full_check_sample.columns:
+        if not status_counts.empty:
             valid_statuses = ['Fully Paid', 'Charged Off', 'Current', 'In Grace Period', 'Late (16-30 days)', 'Late (31-120 days)', 'Default']
             required_statuses_for_training = ['Fully Paid', 'Charged Off']
-            status_counts = df_full_check_sample['loan_status'].value_counts(normalize=True)
+            status_distribution = status_counts / status_counts.sum()
             
-            missing_required = [s for s in required_statuses_for_training if s not in status_counts.index]
+            missing_required = [s for s in required_statuses_for_training if s not in status_distribution.index]
             current_passed_check = not missing_required
-            details = f"Required statuses {required_statuses_for_training} {'are present' if current_passed_check else 'are MISSING'}. Distribution:\n{status_counts.to_dict()}"
+            details = f"Required statuses {required_statuses_for_training} {'are present' if current_passed_check else 'are MISSING'}. Distribution:\n{status_distribution.to_dict()}"
             if not current_passed_check:
                 all_passed = False
             
             test_results["checks"].append({
                 "check_name": check_name,
                 "passed": bool(current_passed_check),
-                "metrics": {"status_distribution": status_counts.to_dict()},
+                "metrics": {"status_distribution": status_distribution.to_dict()},
                 "details": details
             })
             logger.info(f"{check_name} passed: {current_passed_check}")
         else:
-            logger.warning("Skipping 'Loan Status Distribution' check: 'loan_status' column not found.")
+            logger.warning("Skipping 'Loan Status Distribution' check: No status data processed.")
             test_results["checks"].append({
                 "check_name": check_name,
                 "passed": False,
-                "details": "'loan_status' column not found."
+                "details": "No loan status data was processed, possibly due to an error in the chunked processing step."
             })
             all_passed = False
 
         # Check 2: Interest Rate Sanity
         check_name = "Interest Rate Sanity"
         logger.info(f"Running check: {check_name}")
-        if 'int_rate' in df_full_check_sample.columns:
+        if min_rate_overall != float('inf') and min_rate_overall != -1:
             try:
-                processed_rates = pd.to_numeric(df_full_check_sample['int_rate'].astype(str).str.rstrip('%'), errors='coerce') / 100.0
-                processed_rates.dropna(inplace=True)
-
-                min_rate, max_rate = processed_rates.min(), processed_rates.max()
+                min_rate, max_rate = min_rate_overall, max_rate_overall
                 abs_min_expected, abs_max_expected = 0.0531, 0.3084 
                 
                 current_passed_check = (min_rate >= abs_min_expected * 0.9) and (max_rate <= abs_max_expected * 1.1)
@@ -369,15 +405,15 @@ def run_data_quality_checks(data_path: str, output_file_path: str) -> bool:
                 })
                 all_passed = False
         else:
-            logger.warning(f"Skipping '{check_name}' check: 'int_rate' column not found.")
+            logger.warning(f"Skipping '{check_name}' check: 'int_rate' column not found or all values were null.")
             test_results["checks"].append({
                 "check_name": check_name,
                 "passed": False,
-                "details": "'int_rate' column not found."
+                "details": "'int_rate' column not found or all values null during chunked processing."
             })
             all_passed = False
         
-        # Check 3: Missing Loan Amount
+        # Check 3: Missing Loan Amount (on a sample)
         check_name = "Missing Loan Amount"
         logger.info(f"Running check: {check_name}")
         if 'loan_amnt' in df_sample.columns:

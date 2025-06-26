@@ -1,0 +1,29 @@
+{
+  "model_uri": "runs:/2d16f5bde30c4ecb82bff2710a52a9cb/model",
+  "mlflow_run_id": "2d16f5bde30c4ecb82bff2710a52a9cb",
+  "model_version_name": "Model_V1_Default",
+  "numeric_features": [
+    "loan_amnt",
+    "int_rate",
+    "installment",
+    "annual_inc",
+    "dti",
+    "delinq_2yrs",
+    "inq_last_6mths",
+    "open_acc",
+    "pub_rec",
+    "revol_bal",
+    "revol_util",
+    "total_acc",
+    "emp_length_numeric"
+  ],
+  "categorical_features": [
+    "term",
+    "grade",
+    "sub_grade",
+    "home_ownership",
+    "verification_status",
+    "purpose",
+    "addr_state"
+  ]
+}

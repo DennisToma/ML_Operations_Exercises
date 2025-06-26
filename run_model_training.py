@@ -43,10 +43,26 @@ def train_model(
     output_dir: str,
     min_records: int,
     test_set_prop: float,
+    model_version_name: str,
+    regularization_c: float,
     sample_size: int = None
 ):
     logger.info("--- Starting Model Training Script ---")
+    logger.info(f"Model Version Name (Run Name): {model_version_name}")
     logger.info(f"Available memory before starting: {psutil.virtual_memory().available / (1024**3):.2f} GB")
+
+    # --- Feature Selection (defined early for memory optimization) ---
+    numeric_features_base = [
+        'loan_amnt', 'int_rate', 'installment', 'annual_inc', 'dti',
+        'delinq_2yrs', 'inq_last_6mths', 'open_acc', 'pub_rec',
+        'revol_bal', 'revol_util', 'total_acc'
+    ]
+    categorical_features = [
+        'term', 'grade', 'sub_grade', 'home_ownership', 
+        'verification_status', 'purpose', 'addr_state'
+    ]
+    # Define all columns we need to load from the CSV to derive our features. Using a set for fast lookups.
+    features_to_load = set(numeric_features_base + categorical_features + ['emp_length', 'loan_status'])
 
     mlflow.set_tracking_uri(mlflow_tracking_uri)
     mlflow.set_experiment(mlflow_experiment_name)
@@ -58,27 +74,35 @@ def train_model(
     
     # Ensure output directory exists
     pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
-    meta_file_path = os.path.join(output_dir, "model_meta.json")
+    meta_file_path = os.path.join(output_dir, "model_meta.json") # Use a single metadata file.
 
     active_run = None
     try:
-        with mlflow.start_run(run_name="dockerized_training_run") as active_run:
+        with mlflow.start_run(run_name=model_version_name) as active_run:
             mlflow_run_id_output = active_run.info.run_id
             logger.info(f"MLflow Run ID: {mlflow_run_id_output}")
             mlflow.log_param("script_name", "run_model_training.py")
             mlflow.log_param("data_path", data_path)
             mlflow.log_param("min_training_records_threshold", min_records)
             mlflow.log_param("test_set_prop", test_set_prop)
+            mlflow.log_param("regularization_c", regularization_c)
             if sample_size:
                 mlflow.log_param("sample_size", sample_size)
 
             # --- Load Data ---
-            logger.info(f"Loading data from {data_path}")
+            logger.info(f"Loading data from {data_path}, using specific columns to save memory.")
             chunk_size = 100000
             chunks = []
             valid_statuses = ['Fully Paid', 'Charged Off'] # Focus on binary classification for this model
             
-            for i, chunk_df in enumerate(pd.read_csv(data_path, chunksize=chunk_size, low_memory=True)):
+            iterator = pd.read_csv(
+                data_path, 
+                chunksize=chunk_size, 
+                low_memory=True, 
+                usecols=lambda c: c in features_to_load
+            )
+            
+            for i, chunk_df in enumerate(iterator):
                 logger.info(f"Processing chunk {i+1}")
                 filtered_chunk = chunk_df[chunk_df['loan_status'].isin(valid_statuses)].copy()
                 if not filtered_chunk.empty:
@@ -97,6 +121,8 @@ def train_model(
                 raise ValueError(error_message)
 
             df = pd.concat(chunks, ignore_index=True)
+            del chunks; gc.collect()
+
             if sample_size and len(df) > sample_size:
                 df = df.sample(n=sample_size, random_state=42)
             
@@ -120,18 +146,9 @@ def train_model(
                 mlflow.log_param("error_message", error_message)
                 raise ValueError(error_message)
 
-            # --- Feature Selection ---
-            numeric_features = [
-                'loan_amnt', 'int_rate', 'installment', 'annual_inc', 'dti',
-                'delinq_2yrs', 'inq_last_6mths', 'open_acc', 'pub_rec',
-                'revol_bal', 'revol_util', 'total_acc'
-            ]
-            if 'emp_length_numeric' in df.columns:
-                numeric_features.append('emp_length_numeric')
-            categorical_features = [
-                'term', 'grade', 'sub_grade', 'home_ownership', 
-                'verification_status', 'purpose', 'addr_state'
-            ]
+            # --- Finalize Feature Lists ---
+            # Now that 'emp_length_numeric' is created, we define the final feature list for the model
+            numeric_features = numeric_features_base + ['emp_length_numeric']
             features_to_use = numeric_features + categorical_features
             mlflow.log_param("numeric_features_used", ", ".join(numeric_features))
             mlflow.log_param("categorical_features_used", ", ".join(categorical_features))
@@ -173,7 +190,13 @@ def train_model(
             
             model_pipeline = SklearnPipeline(steps=[
                 ('preprocessor', preprocessor),
-                ('classifier', LogisticRegression(random_state=42, max_iter=2000, class_weight='balanced', solver='liblinear'))
+                ('classifier', LogisticRegression(
+                    C=regularization_c,
+                    random_state=42, 
+                    max_iter=2000, 
+                    class_weight='balanced', 
+                    solver='liblinear'
+                ))
             ])
 
             logger.info("Training the model...")
@@ -223,21 +246,35 @@ def train_model(
             logger.info(f"Model registered. URI: {model_uri_output}")
             mlflow.log_param("training_status", "success")
             
-            # Save metadata for the next step
-            model_meta = {
+            # Load existing metadata if available
+            if os.path.exists(meta_file_path):
+                with open(meta_file_path, 'r') as f:
+                    try:
+                        all_model_meta = json.load(f)
+                    except json.JSONDecodeError:
+                        all_model_meta = {} # Start fresh if file is corrupt
+            else:
+                all_model_meta = {}
+
+            # Create metadata for the new model and add it to the collection
+            new_model_meta = {
                 "model_uri": model_uri_output,
                 "mlflow_run_id": mlflow_run_id_output,
+                "model_name": "LendingClubDefaultClassifier_Docker",
                 "numeric_features": numeric_features,
                 "categorical_features": categorical_features
             }
+            all_model_meta[model_version_name] = new_model_meta
+
+            # Save the updated metadata back to the single file
             with open(meta_file_path, 'w') as f:
-                json.dump(model_meta, f, indent=2)
-            logger.info(f"Model metadata saved to {meta_file_path}")
+                json.dump(all_model_meta, f, indent=2)
+            logger.info(f"Model metadata updated in {meta_file_path}")
 
             return True # Success
 
     except Exception as e:
-        logger.error(f"Error during model training: {e}", exc_info=True)
+        logger.error(f"An error occurred during the training process: {e}", exc_info=True)
         if mlflow.active_run():
             mlflow.log_param("training_status", "failed_exception")
             mlflow.log_param("error_message", str(e))
@@ -258,6 +295,11 @@ def main():
     
     min_records = int(os.getenv("MIN_TRAINING_RECORDS", "5000"))
     test_set_prop = float(os.getenv("TEST_SET_SIZE", "0.2"))
+    
+    # --- Parameters for Flow Versioning ---
+    model_version_name = os.getenv("MODEL_VERSION_NAME", "Model_V1_Default")
+    regularization_c = float(os.getenv("REGULARIZATION_C", "1.0"))
+
     use_sample_str = os.getenv("USE_SAMPLE", "False").lower()
     use_sample = use_sample_str == 'true'
     sample_size = int(os.getenv("SAMPLE_SIZE", "100000")) if use_sample else None
@@ -268,7 +310,7 @@ def main():
 
     success = train_model(
         data_path, mlflow_tracking_uri, mlflow_experiment_name, output_dir,
-        min_records, test_set_prop, sample_size
+        min_records, test_set_prop, model_version_name, regularization_c, sample_size
     )
 
     if success:

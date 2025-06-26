@@ -1,0 +1,14 @@
+# Dockerfile.drift_monitor
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Copy requirements and install dependencies
+COPY requirements-drift-monitor.txt .
+RUN pip install --no-cache-dir -r requirements-drift-monitor.txt
+
+# Copy the application script
+COPY run_drift_monitoring.py .
+
+# Set the entrypoint for the container
+ENTRYPOINT ["python", "run_drift_monitoring.py"] 

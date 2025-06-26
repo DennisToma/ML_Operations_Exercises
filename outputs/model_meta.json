@@ -1,6 +1,6 @@
 {
-  "model_uri": "runs:/5d573e8c6bba4acf9d11fc7e62dac7f6/model",
-  "mlflow_run_id": "5d573e8c6bba4acf9d11fc7e62dac7f6",
+  "model_uri": "runs:/b654c2ba81ba44f48bc32e409538eb48/model",
+  "mlflow_run_id": "b654c2ba81ba44f48bc32e409538eb48",
   "numeric_features": [
     "loan_amnt",
     "int_rate",
@@ -24,5 +24,63 @@
     "verification_status",
     "purpose",
     "addr_state"
-  ]
+  ],
+  "Model_V1_Default": {
+    "model_uri": "runs:/6c5a48b52e124e20ace11d3ef5a49bfa/model",
+    "mlflow_run_id": "6c5a48b52e124e20ace11d3ef5a49bfa",
+    "model_name": "LendingClubDefaultClassifier_Docker",
+    "numeric_features": [
+      "loan_amnt",
+      "int_rate",
+      "installment",
+      "annual_inc",
+      "dti",
+      "delinq_2yrs",
+      "inq_last_6mths",
+      "open_acc",
+      "pub_rec",
+      "revol_bal",
+      "revol_util",
+      "total_acc",
+      "emp_length_numeric"
+    ],
+    "categorical_features": [
+      "term",
+      "grade",
+      "sub_grade",
+      "home_ownership",
+      "verification_status",
+      "purpose",
+      "addr_state"
+    ]
+  },
+  "Model_V2_Strong_Reg": {
+    "model_uri": "runs:/b1c32a53daef4485b1320244d0996e3c/model",
+    "mlflow_run_id": "b1c32a53daef4485b1320244d0996e3c",
+    "model_name": "LendingClubDefaultClassifier_Docker",
+    "numeric_features": [
+      "loan_amnt",
+      "int_rate",
+      "installment",
+      "annual_inc",
+      "dti",
+      "delinq_2yrs",
+      "inq_last_6mths",
+      "open_acc",
+      "pub_rec",
+      "revol_bal",
+      "revol_util",
+      "total_acc",
+      "emp_length_numeric"
+    ],
+    "categorical_features": [
+      "term",
+      "grade",
+      "sub_grade",
+      "home_ownership",
+      "verification_status",
+      "purpose",
+      "addr_state"
+    ]
+  }
 }

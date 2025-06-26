@@ -1,0 +1,15 @@
+{
+  "test_id": "v1_vs_v2_comparison",
+  "models": {
+    "Model_0": {
+      "run_id": "2d16f5bde30c4ecb82bff2710a52a9cb",
+      "roc_auc": 0.6773810599543191,
+      "test_data_size": 80279
+    },
+    "Model_1": {
+      "run_id": "0c112bec5f064f4bb9f0559b286050f9",
+      "roc_auc": 0.669863931124003,
+      "test_data_size": 80422
+    }
+  }
+}

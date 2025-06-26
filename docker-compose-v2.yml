@@ -1,0 +1,100 @@
+services:
+  data-validator:
+    build:
+      context: .
+      dockerfile: Dockerfile.data_validator
+    container_name: lending_club_data_validator
+    volumes:
+      - ./data:/app/data:ro
+      - ./outputs:/app/outputs:rw
+      - ./data_quality_tests.py:/app/data_quality_tests.py:ro
+      - ./run_data_validation.py:/app/run_data_validation.py:ro
+      - ./requirements-data-validator.txt:/app/requirements-data-validator.txt:ro
+    environment:
+      - DATA_PATH=/app/data/accepted_2007_to_2018Q4.csv
+      - OUTPUT_DIR=/app/outputs
+    networks:
+      - lending_club_net
+
+  model-trainer:
+    build:
+      context: .
+      dockerfile: Dockerfile.model_trainer
+    container_name: lending_club_model_trainer_v2
+    depends_on:
+      data-validator:
+        condition: service_completed_successfully
+    volumes:
+      - ./data:/app/data:ro
+      - ./mlruns:/app/mlruns:rw
+      - ./outputs:/app/outputs:rw
+      - ./data_quality_tests.py:/app/data_quality_tests.py:ro
+      - ./run_model_training.py:/app/run_model_training.py:ro
+      - ./requirements-model-trainer.txt:/app/requirements-model-trainer.txt:ro
+    environment:
+      - DATA_PATH=/app/data/accepted_2007_to_2018Q4.csv
+      - MLFLOW_TRACKING_URI=file:///app/mlruns
+      - MLFLOW_EXPERIMENT_NAME=LendingClubDockerized
+      - OUTPUT_DIR=/app/outputs
+      - MIN_TRAINING_RECORDS=5000
+      - TEST_SET_SIZE=0.2
+      - USE_SAMPLE=True
+      - SAMPLE_SIZE=50000
+      # --- Flow Version 2 Parameters ---
+      - MODEL_VERSION_NAME=Model_V2_Strong_Reg
+      - REGULARIZATION_C=0.1
+    networks:
+      - lending_club_net
+
+  model-validator:
+    build:
+      context: .
+      dockerfile: Dockerfile.model_validator
+    container_name: lending_club_model_validator_v2
+    depends_on:
+      model-trainer:
+        condition: service_completed_successfully
+    volumes:
+      - ./data:/app/data:ro
+      - ./mlruns:/app/mlruns:rw
+      - ./outputs:/app/outputs:ro
+      - ./data_quality_tests.py:/app/data_quality_tests.py:ro
+      - ./run_model_validation.py:/app/run_model_validation.py:ro
+      - ./requirements-model-validator.txt:/app/requirements-model-validator.txt:ro
+    environment:
+      - DATA_PATH=/app/data/accepted_2007_to_2018Q4.csv
+      - MLFLOW_TRACKING_URI=file:///app/mlruns
+      - MLFLOW_EXPERIMENT_NAME=LendingClubDockerized
+      - OUTPUT_DIR=/app/outputs
+      # --- Tell validator which model version to validate ---
+      - MODEL_VERSION_NAME=Model_V2_Strong_Reg
+      # --- Parameters for Robustness Test ---
+      - TEST_SET_SIZE=0.2
+      - USE_SAMPLE=True
+      - SAMPLE_SIZE=20000
+      - NOISE_LEVEL=0.05
+      - ROBUSTNESS_THRESHOLD=0.10
+    networks:
+      - lending_club_net
+
+  drift-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile.drift_monitor
+    container_name: lending_club_drift_monitor_v2
+    depends_on:
+      model-validator:
+        condition: service_completed_successfully
+    volumes:
+      - ./data:/app/data:ro
+      - ./outputs:/app/outputs:rw
+    environment:
+      - DATA_PATH=/app/data/accepted_2007_to_2018Q4.csv
+      - OUTPUT_DIR=/app/outputs
+
+volumes:
+  mlruns:
+
+networks:
+  lending_club_net:
+    driver: bridge 
